@@ -1,19 +1,19 @@
 import assign from 'object-assign'
 import { Dispatcher } from 'flux'
 
-import makeAction from './utils/makeAction'
+import makeAction from './actions'
+import {
+  createStoreConfig,
+  createStoreFromObject,
+  createStoreFromClass,
+  transformStore
+} from './store'
 import {
   filterSnapshots,
   saveInitialSnapshot,
   setAppState,
   snapshot
 } from './utils/StateFunctions'
-import {
-  createStoreConfig,
-  createStoreFromObject,
-  createStoreFromClass,
-  transformStore
-} from './utils/StoreUtils'
 import {
   ACTION_KEY,
   ACTIONS_REGISTRY,

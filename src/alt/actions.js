@@ -1,9 +1,25 @@
-import * as Sym from '../symbols/symbols'
 import Symbol from 'es-symbol'
-import AltAction from '../AltAction'
-import { uid } from './AltUtils'
 
-const { ACTION_KEY, ACTION_HANDLER, ACTIONS_REGISTRY } = Sym
+import {
+  ACTION_HANDLER,
+  ACTION_KEY,
+  ACTIONS_REGISTRY,
+  ACTION_UID
+} from './symbols/symbols'
+import { uid } from './utils/AltUtils'
+
+class AltAction {
+  constructor(alt, name, action, actions) {
+    this[ACTION_UID] = name
+    this[ACTION_HANDLER] = action.bind(this)
+    this.actions = actions
+    this.alt = alt
+  }
+
+  dispatch(data) {
+    this.alt.dispatch(this[ACTION_UID], data)
+  }
+}
 
 export default function makeAction(alt, namespace, name, implementation, obj) {
   // make sure each Symbol is unique
