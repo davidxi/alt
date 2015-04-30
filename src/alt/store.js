@@ -2,15 +2,8 @@ import EventEmitter from 'eventemitter3'
 import assign from 'object-assign'
 import Symbol from 'es-symbol'
 
-import {
-  ACTION_KEY,
-  ALL_LISTENERS,
-  LIFECYCLE,
-  LISTENERS,
-  PUBLIC_METHODS,
-  STATE_CONTAINER
-} from './symbols/symbols'
-import { getInternalMethods } from './utils/AltUtils'
+import * as Sym from './symbols/symbols'
+import * as utils from './utils/AltUtils'
 
 // event emitter instance
 const EE = Symbol()
@@ -18,33 +11,33 @@ const EE = Symbol()
 class AltStore {
   constructor(alt, model, state, StoreModel) {
     this[EE] = new EventEmitter()
-    this[LIFECYCLE] = {}
-    this[STATE_CONTAINER] = state || model
+    this[Sym.LIFECYCLE] = {}
+    this[Sym.STATE_CONTAINER] = state || model
 
     this._storeName = model._storeName
-    this.boundListeners = model[ALL_LISTENERS]
+    this.boundListeners = model[Sym.ALL_LISTENERS]
     this.StoreModel = StoreModel
     if (typeof this.StoreModel === 'object') {
       this.StoreModel.state = assign({}, StoreModel.state)
     }
 
-    assign(this[LIFECYCLE], model[LIFECYCLE])
-    assign(this, model[PUBLIC_METHODS])
+    assign(this[Sym.LIFECYCLE], model[Sym.LIFECYCLE])
+    assign(this, model[Sym.PUBLIC_METHODS])
 
     // Register dispatcher
     this.dispatchToken = alt.dispatcher.register((payload) => {
-      if (model[LIFECYCLE].beforeEach) {
-        model[LIFECYCLE].beforeEach(payload, this[STATE_CONTAINER])
+      if (model[Sym.LIFECYCLE].beforeEach) {
+        model[Sym.LIFECYCLE].beforeEach(payload, this[Sym.STATE_CONTAINER])
       }
 
-      if (model[LISTENERS][payload.action]) {
+      if (model[Sym.LISTENERS][payload.action]) {
         let result = false
 
         try {
-          result = model[LISTENERS][payload.action](payload.data)
+          result = model[Sym.LISTENERS][payload.action](payload.data)
         } catch (e) {
-          if (this[LIFECYCLE].error) {
-            this[LIFECYCLE].error(e, payload, this[STATE_CONTAINER])
+          if (this[Sym.LIFECYCLE].error) {
+            this[Sym.LIFECYCLE].error(e, payload, this[Sym.STATE_CONTAINER])
           } else {
             throw e
           }
@@ -55,13 +48,13 @@ class AltStore {
         }
       }
 
-      if (model[LIFECYCLE].afterEach) {
-        model[LIFECYCLE].afterEach(payload, this[STATE_CONTAINER])
+      if (model[Sym.LIFECYCLE].afterEach) {
+        model[Sym.LIFECYCLE].afterEach(payload, this[Sym.STATE_CONTAINER])
       }
     })
 
-    if (this[LIFECYCLE].init) {
-      this[LIFECYCLE].init()
+    if (this[Sym.LIFECYCLE].init) {
+      this[Sym.LIFECYCLE].init()
     }
   }
 
@@ -70,7 +63,7 @@ class AltStore {
   }
 
   emitChange() {
-    this[EE].emit('change', this[STATE_CONTAINER])
+    this[EE].emit('change', this[Sym.STATE_CONTAINER])
   }
 
   listen(cb) {
@@ -79,14 +72,17 @@ class AltStore {
   }
 
   unlisten(cb) {
-    if (this[LIFECYCLE].unlisten) {
-      this[LIFECYCLE].unlisten()
+    if (this[Sym.LIFECYCLE].unlisten) {
+      this[Sym.LIFECYCLE].unlisten()
     }
     this[EE].removeListener('change', cb)
   }
 
   getState() {
-    return this.StoreModel.config.getState.call(this, this[STATE_CONTAINER])
+    return this.StoreModel.config.getState.call(
+      this,
+      this[Sym.STATE_CONTAINER]
+    )
   }
 }
 
@@ -98,12 +94,12 @@ function doSetState(store, storeInstance, state) {
   const { config } = storeInstance.StoreModel
 
   const nextState = typeof state === 'function'
-    ? state(storeInstance[STATE_CONTAINER])
+    ? state(storeInstance[Sym.STATE_CONTAINER])
     : state
 
-  storeInstance[STATE_CONTAINER] = config.setState.call(
+  storeInstance[Sym.STATE_CONTAINER] = config.setState.call(
     store,
-    storeInstance[STATE_CONTAINER],
+    storeInstance[Sym.STATE_CONTAINER],
     nextState
   )
 
@@ -132,9 +128,9 @@ export function createStoreFromObject(alt, StoreModel, key) {
   let storeInstance
 
   const StoreProto = {}
-  StoreProto[ALL_LISTENERS] = []
-  StoreProto[LIFECYCLE] = {}
-  StoreProto[LISTENERS] = {}
+  StoreProto[Sym.ALL_LISTENERS] = []
+  StoreProto[Sym.LIFECYCLE] = {}
+  StoreProto[Sym.LISTENERS] = {}
 
   assign(StoreProto, {
     _storeName: key,
@@ -204,10 +200,10 @@ export function createStoreFromClass(alt, StoreModel, key, ...argsForClass) {
     }
   })
 
-  Store.prototype[ALL_LISTENERS] = []
-  Store.prototype[LIFECYCLE] = {}
-  Store.prototype[LISTENERS] = {}
-  Store.prototype[PUBLIC_METHODS] = {}
+  Store.prototype[Sym.ALL_LISTENERS] = []
+  Store.prototype[Sym.LIFECYCLE] = {}
+  Store.prototype[Sym.LISTENERS] = {}
+  Store.prototype[Sym.PUBLIC_METHODS] = {}
 
   const store = new Store(...argsForClass)
 
@@ -218,7 +214,7 @@ export function createStoreFromClass(alt, StoreModel, key, ...argsForClass) {
       store[alt.config.stateKey] || store[config.stateKey] || null,
       StoreModel
     ),
-    getInternalMethods(StoreModel),
+    utils.getInternalMethods(StoreModel),
     { displayName: key }
   )
 
@@ -250,7 +246,7 @@ const StoreMixinEssentials = {
         throw new TypeError('exportPublicMethods expects a function')
       }
 
-      this[PUBLIC_METHODS][methodName] = methods[methodName]
+      this[Sym.PUBLIC_METHODS][methodName] = methods[methodName]
     })
   },
 
@@ -261,7 +257,7 @@ const StoreMixinEssentials = {
 
 const StoreMixinListeners = {
   on(lifecycleEvent, handler) {
-    this[LIFECYCLE][lifecycleEvent] = handler.bind(this)
+    this[Sym.LIFECYCLE][lifecycleEvent] = handler.bind(this)
   },
 
   bindAction(symbol, handler) {
@@ -275,16 +271,16 @@ const StoreMixinListeners = {
     if (handler.length > 1) {
       throw new TypeError(
         `Action handler in store ${this._storeName} for ` +
-        `${(symbol[ACTION_KEY] || symbol).toString()} was defined with 2 ` +
-        `parameters. Only a single parameter is passed through the ` +
+        `${(symbol[Sym.ACTION_KEY] || symbol).toString()} was defined with ` +
+        `two parameters. Only a single parameter is passed through the ` +
         `dispatcher, did you mean to pass in an Object instead?`
       )
     }
 
     // You can pass in the constant or the function itself
-    const key = symbol[ACTION_KEY] ? symbol[ACTION_KEY] : symbol
-    this[LISTENERS][key] = handler.bind(this)
-    this[ALL_LISTENERS].push(Symbol.keyFor(key))
+    const key = symbol[Sym.ACTION_KEY] ? symbol[Sym.ACTION_KEY] : symbol
+    this[Sym.LISTENERS][key] = handler.bind(this)
+    this[Sym.ALL_LISTENERS].push(Symbol.keyFor(key))
   },
 
   bindActions(actions) {
