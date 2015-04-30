@@ -135,11 +135,11 @@ class Alt {
     StateFunctions.setAppState(
       this,
       this.serialize(this[Sym.LAST_SNAPSHOT]),
-      (store) => {
-        if (store[Sym.LIFECYCLE].rollback) {
-          store[Sym.LIFECYCLE].rollback()
+      storeInst => {
+        if (storeInst[Sym.LIFECYCLE].rollback) {
+          storeInst[Sym.LIFECYCLE].rollback()
         }
-        store.emitChange()
+        storeInst.emitChange()
       }
     )
   }
@@ -156,11 +156,11 @@ class Alt {
     StateFunctions.setAppState(
       this,
       this.serialize(initialSnapshot),
-      (store) => {
-        if (store[Sym.LIFECYCLE].init) {
-          store[Sym.LIFECYCLE].init()
+      (storeInst) => {
+        if (storeInst[Sym.LIFECYCLE].init) {
+          storeInst[Sym.LIFECYCLE].init()
         }
-        store.emitChange()
+        storeInst.emitChange()
       }
     )
   }
@@ -172,20 +172,20 @@ class Alt {
   }
 
   bootstrap(data) {
-    StateFunctions.setAppState(this, data, (store) => {
-      if (store[Sym.LIFECYCLE].bootstrap) {
-        store[Sym.LIFECYCLE].bootstrap()
+    StateFunctions.setAppState(this, data, (storeInst) => {
+      if (storeInst[Sym.LIFECYCLE].bootstrap) {
+        storeInst[Sym.LIFECYCLE].bootstrap()
       }
-      store.emitChange()
+      storeInst.emitChange()
     })
   }
 
-  prepare(store, payload) {
+  prepare(storeInst, payload) {
     const data = {}
-    if (!store._storeName) {
+    if (!storeInst.displayName) {
       throw new ReferenceError('Store provided does not have a name')
     }
-    data[store._storeName] = payload
+    data[storeInst.displayName] = payload
     return this.serialize(data)
   }
 
